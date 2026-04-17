@@ -2,6 +2,14 @@
 from typing import Dict, List, Tuple
 
 
+def _norm64(pkt: bytes) -> bytes:
+    if len(pkt) == 64:
+        return pkt
+    out = bytearray(64)
+    out[: min(len(pkt), 64)] = pkt[:64]
+    return bytes(out)
+
+
 AE_PACKET = bytes.fromhex(
     "04ae010000030204000000000000000000000000000000000000000000000000"
     "0000000000000000000000000000000000000000000000000000000000000000"
@@ -66,6 +74,9 @@ BASE_PAGES: Dict[int, bytes] = {
     ),
 }
 
+AE_PACKET = _norm64(AE_PACKET)
+BASE_PAGES = {k: _norm64(v) for k, v in BASE_PAGES.items()}
+
 FN_LEFT_INDEX = 0x6D
 FN_RIGHT_INDEX = 0x70
 FN_LEFT_USAGE_OFFSET = 16
@@ -109,8 +120,41 @@ def extract_fn_from_page_0d(page_0d: bytes) -> Tuple[int, int]:
 
 
 def build_static_color_packet(_r: int, _g: int, _b: int) -> bytes:
-    # Ainda não temos captura A9 com payload LED válido.
-    raise NotImplementedError(
-        "Protocolo de cor LED (A9) ainda não foi decodificado para este teclado."
-    )
+    # Palpite conservador de payload A9 (não confirmado por captura).
+    return build_led_guess_sequence(_r, _g, _b, profile="safe")[0]
 
+
+def _clamp_rgb(r: int, g: int, b: int) -> Tuple[int, int, int]:
+    for v in (r, g, b):
+        if not (0 <= v <= 255):
+            raise ValueError("RGB deve estar entre 0 e 255")
+    return r, g, b
+
+
+def _pkt(header: bytes, body: bytes = b"") -> bytes:
+    pkt = bytearray(64)
+    raw = header + body
+    pkt[: min(len(raw), 64)] = raw[:64]
+    return bytes(pkt)
+
+
+def build_led_guess_sequence(r: int, g: int, b: int, profile: str = "safe") -> List[bytes]:
+    """
+    Gera sequência A9 de tentativa para LED sem captura oficial.
+    profile=safe: 1 payload conservador
+    profile=aggressive: 3 variações comuns observadas em teclados OEM similares
+    """
+    r, g, b = _clamp_rgb(r, g, b)
+
+    # Formato 1: report 0x04, cmd 0xA9, subcmd 0x01, modo estático, RGB.
+    p1 = _pkt(bytes([0x04, 0xA9, 0x01, 0x01, r, g, b]))
+    # Formato 2: subcmd alternativo com sentinel A5 no final útil.
+    p2 = _pkt(bytes([0x04, 0xA9, 0x02, 0x01, r, g, b, 0xA5, 0x00]))
+    # Formato 3: header expandido (índice de perfil 0x00, brilho 0xFF).
+    p3 = _pkt(bytes([0x04, 0xA9, 0x03, 0x00, 0x01, r, g, b, 0xFF]))
+
+    if profile == "safe":
+        return [p1]
+    if profile == "aggressive":
+        return [p1, p2, p3]
+    raise ValueError("profile invalido para LED (use: safe/aggressive)")

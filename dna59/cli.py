@@ -2,8 +2,13 @@
 import argparse
 import sys
 
-from .protocol import PRESETS, BASE_PAGES, extract_fn_from_page_0d, build_static_color_packet
-from .remap import apply_fn_mapping
+from .protocol import (
+    PRESETS,
+    BASE_PAGES,
+    build_led_guess_sequence,
+    extract_fn_from_page_0d,
+)
+from .remap import apply_fn_mapping, apply_packet_sequence
 from .transport import HidRawTransport, detect_device, iter_hidraw_paths
 
 
@@ -88,12 +93,48 @@ def cmd_preset(args: argparse.Namespace) -> int:
 
 
 def cmd_set_color(args: argparse.Namespace) -> int:
-    try:
-        _ = build_static_color_packet(args.r, args.g, args.b)
-    except NotImplementedError as e:
-        print(f"[indisponivel] {e}")
-        print("Envie uma captura com comandos A9/LED para habilitar set-color.")
+    if not args.unsafe:
+        print("[bloqueado] set-color exige --unsafe (modo experimental sem captura oficial A9).")
+        print("Exemplo: sudo python3 dna59ctl.py set-color --r 255 --g 0 --b 0 --unsafe --profile aggressive --no-verify")
         return 2
+
+    try:
+        dev_path = resolve_dev_path(args.dev)
+    except RuntimeError as e:
+        print(str(e))
+        return 2
+
+    try:
+        sequence = build_led_guess_sequence(args.r, args.g, args.b, profile=args.profile)
+    except ValueError as e:
+        print(f"[erro] {e}")
+        return 2
+
+    try:
+        with HidRawTransport(dev_path) as dev:
+            result = apply_packet_sequence(
+                dev=dev,
+                sequence=sequence,
+                verify=not args.no_verify,
+            )
+    except PermissionError:
+        print("Permissao negada. Rode com sudo.")
+        return 2
+    except FileNotFoundError:
+        print(f"Dispositivo nao encontrado: {dev_path}")
+        return 2
+    except OSError as e:
+        print(f"Erro no hidraw: errno={e.errno} ({e.strerror})")
+        return 2
+
+    if not result.ok:
+        print(f"[erro] {result.error}")
+        return 2
+    for idx in result.missing_echo_packets:
+        print(f"[warn] sem resposta no pacote LED #{idx}, seguindo (no-verify)")
+    print(
+        f"[ok] tentativa de cor enviada: rgb=({args.r},{args.g},{args.b}) profile={args.profile}"
+    )
     return 0
 
 
@@ -116,9 +157,13 @@ def build_parser() -> argparse.ArgumentParser:
     preset.add_argument("--no-verify", action="store_true", help="nao exigir eco em todos os pacotes")
 
     color = sp.add_parser("set-color", help="(experimental) define cor LED")
+    color.add_argument("--dev", default=None, help="hidraw (auto-detect se omitido)")
     color.add_argument("--r", type=int, required=True)
     color.add_argument("--g", type=int, required=True)
     color.add_argument("--b", type=int, required=True)
+    color.add_argument("--profile", choices=["safe", "aggressive"], default="safe")
+    color.add_argument("--no-verify", action="store_true", help="nao exigir eco em todos os pacotes")
+    color.add_argument("--unsafe", action="store_true", help="aceita tentativa de LED sem protocolo confirmado")
 
     return p
 
@@ -141,4 +186,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

@@ -95,8 +95,21 @@ sudo python3 dna59ctl.py preset --name linux-br-workaround --no-verify
 
 ## Cor/LED
 
-O comando `set-color` já existe na CLI, mas o protocolo `A9` ainda não foi totalmente decodificado para este teclado.  
-Assim que houver captura válida de LED (`A9`), o comando será habilitado para troca de cor RGB sem Windows.
+O comando `set-color` já existe na CLI em modo experimental e usa tentativa de payload `A9`.
+
+Exemplo (modo de risco):
+
+```bash
+sudo python3 dna59ctl.py set-color --r 255 --g 0 --b 0 --unsafe --profile aggressive --no-verify
+```
+
+Se não aplicar a cor, precisamos capturar uma sessão de LED no Windows para fechar o protocolo oficial.
+
+## Testes automatizados
+
+```bash
+python3 -m unittest discover -s tests -v
+```
 
 ## Resultados práticos
 

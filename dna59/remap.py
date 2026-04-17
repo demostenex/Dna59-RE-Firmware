@@ -15,13 +15,11 @@ class ApplyResult:
     error: str | None
 
 
-def apply_fn_mapping(
+def apply_packet_sequence(
     dev: HidRawTransport,
-    left_usage: int,
-    right_usage: int,
+    sequence: List[bytes],
     verify: bool = True,
 ) -> ApplyResult:
-    sequence = build_apply_sequence(left_usage, right_usage)
     missing: List[int] = []
     for idx, packet in enumerate(sequence):
         resp = dev.send_packet(packet)
@@ -51,3 +49,12 @@ def apply_fn_mapping(
         error=None,
     )
 
+
+def apply_fn_mapping(
+    dev: HidRawTransport,
+    left_usage: int,
+    right_usage: int,
+    verify: bool = True,
+) -> ApplyResult:
+    sequence = build_apply_sequence(left_usage, right_usage)
+    return apply_packet_sequence(dev=dev, sequence=sequence, verify=verify)

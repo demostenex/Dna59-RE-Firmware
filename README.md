@@ -53,6 +53,27 @@ Remapear:
   - comandos: `read`, `dump`, `scan`, `raw`, `a0-readmeta`, `feature-read/raw`, `a3-probe`
 - `fn_monitor.py`
   - monitoramento de `hidraw` em tempo real
+- `dna59_fn_apply.py`
+  - aplica ciclo `AE + A0 (01..0E)` para gravar Fn
+  - default: `Fn esquerda = F4 (0x3D)` e `Fn direita = F8 (0x41)`
+
+Exemplo:
+
+```bash
+sudo python3 dna59_fn_apply.py --dev /dev/hidraw1
+```
+
+## Estado funcional atual (validado)
+
+- `Fn esquerda` mapeada para `=` (usage `0x2E`) via `dna59_fn_apply.py`
+- `Fn direita` mapeada para `Scroll Lock` (usage `0x47`) via `dna59_fn_apply.py`
+- No Linux, `Scroll Lock` remapeado para `\` no `keyd`
+
+Comando usado:
+
+```bash
+sudo python3 dna59_fn_apply.py --dev /dev/hidraw1 --fn-left 0x2e --fn-right 0x47 --no-verify
+```
 
 ## Resultados práticos
 

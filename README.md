@@ -51,7 +51,7 @@ Remapear:
 
 - `dna59ctl.py`
   - nova CLI principal para Linux
-  - comandos: `detect`, `show-fn`, `set-fn`, `preset`, `set-color` (experimental)
+  - comandos: `detect`, `show-fn`, `set-fn`, `preset`, `set-color` (experimental), `set-led-mode`
 - `dna59_hid_tool.py`
   - comandos: `read`, `dump`, `scan`, `raw`, `a0-readmeta`, `feature-read/raw`, `a3-probe`
 - `fn_monitor.py`
@@ -104,6 +104,29 @@ sudo python3 dna59ctl.py set-color --r 255 --g 0 --b 0 --unsafe --profile aggres
 ```
 
 Se não aplicar a cor, precisamos capturar uma sessão de LED no Windows para fechar o protocolo oficial.
+
+Com captura nova, foi identificado comando de modo LED via `AE`:
+
+```bash
+# modo fixo (capturado)
+python3 dna59ctl.py set-led-mode --mode fixed --unsafe --no-verify
+
+# modo wild dance (capturado)
+python3 dna59ctl.py set-led-mode --mode wild-dance --unsafe --no-verify
+```
+
+Opcionalmente, `--with-sync` envia `AE + A0` junto:
+
+```bash
+python3 dna59ctl.py set-led-mode --mode fixed --with-sync --fn-left 0x2e --fn-right 0x47 --unsafe --no-verify
+```
+
+Comando rápido para alternar modo:
+
+```bash
+python3 dna59ctl.py set-led-mode --mode fixed --unsafe --no-verify
+python3 dna59ctl.py set-led-mode --mode wild-dance --unsafe --no-verify
+```
 
 ## Testes automatizados
 

@@ -1,0 +1,10 @@
+只打包在线更新需要的文件
+1，boot.bin
+2, bootloader.exe
+3, ER_IROM1
+4, ER_IROM2
+5, ota_usb_boot.dll
+6, wtconfig.ini
+7, wtlanguage.ini
+
+第三方开发的bootloader UI。替换掉bootloader.exe即可。

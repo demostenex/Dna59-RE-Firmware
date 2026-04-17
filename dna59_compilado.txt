@@ -1,0 +1,87 @@
+DNA59 / Wings Tech MWV602 - Compilado tecnico completo
+
+Objetivo
+- Fazer o teclado DNA59 funcionar plenamente no Linux e, em especial, remapear:
+  - Fn esquerda -> '=' e '+'
+  - Fn direita -> '\' e '|'
+
+Hardware e identificacao
+- Teclado identificado como Wings Tech Gaming Keyboard
+- VID:PID = 2EA8:2122
+
+Ambiente
+- Arch Linux
+- Pasta de trabalho: ~/Downloads/DNA59
+- Arquivos analisados:
+  - ER_IROM1 (firmware principal ARM)
+  - ER_IROM2 (dados/config em flash)
+  - wtconfig.ini
+  - DNA59_Setup_v1.0_20220303.exe
+
+O que foi feito
+1) Tentativa Linux direta
+- keyd configurado para remaps de layout e teclas normais
+- Funciona para varias teclas, mas nao para Fn fisico
+
+2) Captura USB/HID
+- usbmon/tshark usados; barramento correto: usbmon2
+- Capturas realizadas, mas sem pacote util de gravacao obtido do app
+
+3) Monitoramento hidraw
+- /dev/hidraw0 e /dev/hidraw1 monitorados
+- Teclas normais aparecem
+- Fn esquerda/direita nao geram evento dedicado
+
+4) Reverse engineering (firmware/app)
+- App usa SetFeature com payload de 24 bytes
+- wtconfig.ini indica:
+  - App_Report_ID=4
+  - PSD=0x18,0x08 (24 write / 8 read)
+- Firmware (ER_IROM1) decodificado:
+  - dispatch principal em 0xF600
+  - byte[0] = Report ID (0x04)
+  - byte[1] = comando primario (0xA0..0xA9)
+  - comandos relevantes:
+    - 0xA8 = key read
+    - 0xA6 = commit/save
+    - 0xA7 = estado/toggle
+    - 0xA9 = sub-dispatch (LED etc)
+
+5) Hipotese corrigida
+- "indice firmware == HID usage" foi descartada
+- Fluxo real confirmado como multicamada:
+  matrix/index interno -> tabela/transformacao -> HID final
+- Fn e tratada como estado/modificador interno (nao key HID normal)
+
+Scripts criados
+- ~/Downloads/DNA59/dna59_hid_tool.py
+  - comandos: read, dump, scan, raw, a0-readmeta, feature-read/raw, a3-probe
+- ~/Downloads/DNA59/fn_monitor.py
+  - monitora hidraw em tempo real
+
+Resultados praticos (mais importantes)
+- read 109 e read 112 (indices vindos do Cfg.ini para Fn): ok=0
+- a0-readmeta responde valido (incluindo bytes 01 18 0a)
+- scan 0..255 em A8: so indice 0 valido
+- A7 aceita comando (teclado pisca), mas nao destrava indices
+- A3 probe sem indices uteis
+- A1 sem resposta
+- Feature ioctl em hidraw0/hidraw1 (24/25 bytes, rid 00/04): errno 71 (Protocol error)
+
+Conclusao tecnica atual
+- Pelo canal Linux/hidraw usado ate aqui, nao foi possivel acessar o caminho real de escrita de keymap.
+- Com isso, o remap final das duas Fn nao pode ser gravado com confianca apenas com os pacotes hoje conhecidos.
+
+Proximo passo recomendado
+- Capturar no Windows (idealmente VM com USB passthrough funcional) os pacotes reais do app oficial:
+  1) abrir app
+  2) fazer remap minimo
+  3) capturar USBPcap/Wireshark
+  4) filtrar VID:PID 2EA8:2122
+  5) extrair write+commit
+  6) reproduzir no Linux
+
+Estado final desta etapa
+- Protocolo parcialmente decodificado com alta confianca.
+- Natureza interna do Fn comprovada.
+- Falta somente o pacote exato de escrita para concluir o remap definitivo no Linux.

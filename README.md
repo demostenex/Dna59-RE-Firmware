@@ -49,6 +49,9 @@ Remapear:
 
 ## Scripts incluídos
 
+- `dna59ctl.py`
+  - nova CLI principal para Linux
+  - comandos: `detect`, `show-fn`, `set-fn`, `preset`, `set-color` (experimental)
 - `dna59_hid_tool.py`
   - comandos: `read`, `dump`, `scan`, `raw`, `a0-readmeta`, `feature-read/raw`, `a3-probe`
 - `fn_monitor.py`
@@ -60,7 +63,8 @@ Remapear:
 Exemplo:
 
 ```bash
-sudo python3 dna59_fn_apply.py --dev /dev/hidraw1
+python3 dna59ctl.py detect
+sudo python3 dna59ctl.py preset --name linux-br-workaround --no-verify
 ```
 
 ## Estado funcional atual (validado)
@@ -74,6 +78,25 @@ Comando usado:
 ```bash
 sudo python3 dna59_fn_apply.py --dev /dev/hidraw1 --fn-left 0x2e --fn-right 0x47 --no-verify
 ```
+
+## CLI (MVP)
+
+Aplicar Fn manualmente:
+
+```bash
+sudo python3 dna59ctl.py set-fn --left 0x2e --right 0x47 --no-verify
+```
+
+Aplicar preset pronto:
+
+```bash
+sudo python3 dna59ctl.py preset --name linux-br-workaround --no-verify
+```
+
+## Cor/LED
+
+O comando `set-color` já existe na CLI, mas o protocolo `A9` ainda não foi totalmente decodificado para este teclado.  
+Assim que houver captura válida de LED (`A9`), o comando será habilitado para troca de cor RGB sem Windows.
 
 ## Resultados práticos
 
